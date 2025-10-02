@@ -1,0 +1,17 @@
+Pyrofork
+TgCrypto
+Pyleaves
+python-dotenv
+psutil
+pillow
+pyrogram
+uvloop
+flask
+pillow
+psutil
+Pyleaves
+Pyrofork
+pyrogram
+python-dotenv
+TgCrypto
+uvloop

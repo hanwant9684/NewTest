@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Ads - Get Free Downloads</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            padding: 20px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .verification-notice {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .timer-container {
+            background: white;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .timer-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .timer {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 10px 0;
+        }
+        
+        .start-btn {
+            width: calc(100% - 40px);
+            margin: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .ad-box {
+            background: #fafafa;
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            margin: 20px;
+            padding: 20px;
+            max-height: 600px;
+            min-height: 400px;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .ad-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .ad-box::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        
+        .ad-box::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+        
+        .ad-box::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+        
+        .ad-box-header {
+            background: #667eea;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .ad-container {
+            background: white;
+            border-radius: 8px;
+            padding: 0;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .ad-label {
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 5px 10px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .banner-ad {
+            display: block;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%);
+            padding: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .banner-ad:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .banner-ad h4 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .banner-ad p {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+        
+        .ad-notice {
+            background: #e3f2fd;
+            padding: 20px;
+            margin: 0 0 20px 0;
+            border-radius: 12px;
+            border-left: 5px solid #2196f3;
+            text-align: center;
+        }
+        
+        .ad-notice h3 {
+            color: #1565c0;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .ad-notice p {
+            color: #424242;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .progress-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            margin: 0 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-dot.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scale(1.3);
+        }
+        
+        .code-display {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 40px;
+            margin: 30px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(17, 153, 142, 0.3);
+        }
+        
+        .code-display h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .code {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            word-break: break-all;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 25px;
+            margin: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #2196f3;
+        }
+        
+        .instructions h3 {
+            color: #1565c0;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 15px;
+        }
+        
+        .instructions li {
+            margin: 10px 0;
+            color: #424242;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        
+        .instructions code {
+            background: #bbdefb;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #0d47a1;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .error-message {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 30px;
+            margin: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .copy-btn {
+            width: calc(100% - 40px);
+            margin: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 12px;
+            }
+            
+            .code {
+                font-size: 28px;
+                letter-spacing: 4px;
+            }
+            
+            .timer {
+                font-size: 40px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+        }
+    </style>
+    
+    <!-- Smartbar Ad -->
+    <script type='text/javascript' src='//pl27833872.effectivegatecpm.com/7a/17/e8/7a17e862ce10b688f0b9c020f722b85f.js'></script>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 Wolfy004 - Free Downloads</h1>
+    </div>
+
+    <div class="container">
+        <!-- Page 1 -->
+        <div class="page active" id="page1">
+            <div class="progress-indicator">
+                <div class="progress-dot active"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+            </div>
+            
+            <div class="verification-notice">
+                ⚡ Step 1 of 3: View Advertisements
+            </div>
+            
+            <button class="start-btn" id="startBtn1">🎯 START WATCHING ADS</button>
+            
+            <div class="timer-container" id="timerContainer1" style="display: none;">
+                <div class="timer-label">Auto-advancing in...</div>
+                <div class="timer" id="timer1">15</div>
+            </div>
+            
+            <div class="ad-box" id="adBox1" style="display: none;">
+                <div class="ad-box-header">📺 Advertisement Zone</div>
+                
+                <div class="ad-notice">
+                    <h3>🌐 Ads Opening in Chrome Browser!</h3>
+                    <p>Please check Chrome for the ad. Stay here for verification</p>
+                </div>
+                
+                <!-- Banner Ad 1 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Advertisement</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+                
+                <!-- Banner Ad 2 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Sponsored</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 2 -->
+        <div class="page" id="page2">
+            <div class="progress-indicator">
+                <div class="progress-dot active"></div>
+                <div class="progress-dot active"></div>
+                <div class="progress-dot"></div>
+            </div>
+            
+            <div class="verification-notice">
+                🔥 Step 2 of 3: Continue Verification
+            </div>
+            
+            <button class="start-btn" id="openAdsBtn2" style="display: none;">🌐 OPEN FINAL ADS</button>
+            
+            <div class="timer-container" id="timerContainer2" style="display: none;">
+                <div class="timer-label">Generating code in...</div>
+                <div class="timer" id="timer2">15</div>
+            </div>
+            
+            <div class="ad-box">
+                <div class="ad-box-header">📺 Advertisement Zone</div>
+                
+                <div class="ad-notice">
+                    <h3>🌐 More Ads in Chrome Browser!</h3>
+                    <p>Almost done! Check Chrome for more ads</p>
+                </div>
+                
+                <!-- Banner Ad 3 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Advertisement</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+                
+                <!-- Banner Ad 4 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Sponsored</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 3 -->
+        <div class="page" id="page3">
+            <div class="progress-indicator">
+                <div class="progress-dot active"></div>
+                <div class="progress-dot active"></div>
+                <div class="progress-dot active"></div>
+            </div>
+            
+            <div class="verification-notice">
+                ✨ Step 3 of 3: Final Verification
+            </div>
+            
+            <button class="start-btn" id="openAdsBtn3" style="display: none;">🌐 OPEN FINAL ADS</button>
+            
+            <div class="timer-container" id="timerContainer3" style="display: none;">
+                <div class="timer-label">Generating code in...</div>
+                <div class="timer" id="timer3">15</div>
+            </div>
+            
+            <div class="ad-box">
+                <div class="ad-box-header">📺 Advertisement Zone</div>
+                
+                <div class="ad-notice">
+                    <h3>🌐 Final Ads in Chrome Browser!</h3>
+                    <p>Almost done! Check Chrome for the final ads</p>
+                </div>
+                
+                <!-- Banner Ad 5 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Advertisement</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+                
+                <!-- Banner Ad 6 - Network Ad -->
+                <div class="ad-container">
+                    <div class="ad-label">Sponsored</div>
+                    <div style="text-align: center; padding: 10px; background: #f5f5f5;">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '9d2b414beda94767b13034f0cb94f7c4',
+                                'format' : 'iframe',
+                                'height' : 60,
+                                'width' : 468,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformageformat.com/9d2b414beda94767b13034f0cb94f7c4/invoke.js"></script>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Page -->
+        <div class="page" id="loadingPage">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>⏳ Generating your verification code...</p>
+            </div>
+        </div>
+
+        <!-- Code Display Page -->
+        <div class="page" id="codePage">
+            <div class="code-display">
+                <h2>🎉 Verification Complete!</h2>
+                <div class="code" id="codeValue">LOADING...</div>
+                <p>Copy this code to get your 5 free downloads!</p>
+            </div>
+            <div class="instructions">
+                <h3>📝 How to use your code:</h3>
+                <ol>
+                    <li>📋 Copy the verification code above</li>
+                    <li>💬 Go back to the Telegram bot</li>
+                    <li>⌨️ Send this command: <code>/verifypremium YOUR_CODE</code></li>
+                    <li>🎊 Enjoy your 5 free downloads!</li>
+                </ol>
+            </div>
+            <button class="copy-btn" onclick="copyCode()">📋 COPY CODE</button>
+        </div>
+
+        <!-- Error Page -->
+        <div class="page" id="errorPage">
+            <div class="error-message" id="errorText">
+                ❌ An error occurred. Please try again.
+            </div>
+            <button class="copy-btn" onclick="location.reload()">🔄 TRY AGAIN</button>
+        </div>
+    </div>
+
+
+    <script>
+        const sessionId = "{{ session }}";
+        let verificationCode = null;
+
+        // Monetag smartlink URLs
+        const smartlink1 = "https://otieu.com/4/9979436";
+        const smartlink2 = "https://www.effectivegatecpm.com/vq0qazivvq?key=16a9a9a2069babc215734d199a78f746";
+        const smartlink3 = "https://otieu.com/4/9979437";
+
+        // Function to open smartlink in Chrome browser new tab (works from Telegram & Chrome)
+        function openInExternalBrowser(url) {
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            const inTelegram = /Telegram/i.test(userAgent) || /TelegramBot/i.test(userAgent);
+            
+            if (isAndroid) {
+                // For Android: Always use Chrome intent to open in Chrome browser new tab
+                const link = document.createElement('a');
+                const chromeIntent = `intent:${url.replace('https://', '//')}#Intent;scheme=https;package=com.android.chrome;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(url)};end`;
+                link.href = chromeIntent;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Fallback: standard window.open for non-Chrome browsers
+                setTimeout(() => {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                }, 200);
+            } else if (isIOS) {
+                // For iOS: Try Chrome scheme first, fallback to Safari
+                const chromeScheme = url.replace('https://', 'googlechrome://');
+                const link = document.createElement('a');
+                link.href = chromeScheme;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Fallback: standard window.open for Safari
+                setTimeout(() => {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                }, 200);
+            } else {
+                // For desktop/other platforms: standard new tab
+                window.open(url, '_blank', 'noopener,noreferrer');
+            }
+        }
+
+        // Start button click - opens first smartlink and starts timer
+        document.getElementById('startBtn1').addEventListener('click', () => {
+            // Open first smartlink in Chrome using intent (Android) or Chrome scheme (iOS)
+            openInExternalBrowser(smartlink1);
+            
+            // Hide button, show timer and ads
+            document.getElementById('startBtn1').style.display = 'none';
+            document.getElementById('timerContainer1').style.display = 'block';
+            document.getElementById('adBox1').style.display = 'block';
+            
+            // Start countdown
+            startPage1Timer();
+        });
+
+        function startPage1Timer() {
+            let timer1 = 15;
+            const timer1Interval = setInterval(() => {
+                timer1--;
+                document.getElementById('timer1').textContent = timer1;
+                
+                if (timer1 <= 0) {
+                    clearInterval(timer1Interval);
+                    advanceToPage2();
+                }
+            }, 1000);
+        }
+
+        function advanceToPage2() {
+            // Transition to page 2
+            document.getElementById('page1').classList.remove('active');
+            document.getElementById('page2').classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Show the button to open ads (requires user gesture in Telegram)
+            document.getElementById('openAdsBtn2').style.display = 'block';
+        }
+
+        // Page 2: Open final ads button click
+        document.getElementById('openAdsBtn2').addEventListener('click', () => {
+            // Open second smartlink in Chrome using intent (Android) or Chrome scheme (iOS)
+            openInExternalBrowser(smartlink2);
+            
+            // Hide button, show timer
+            document.getElementById('openAdsBtn2').style.display = 'none';
+            document.getElementById('timerContainer2').style.display = 'block';
+            
+            // Start page 2 timer
+            startPage2Timer();
+        });
+
+        function startPage2Timer() {
+            let timer2 = 15;
+            const timer2Interval = setInterval(() => {
+                timer2--;
+                document.getElementById('timer2').textContent = timer2;
+                
+                if (timer2 <= 0) {
+                    clearInterval(timer2Interval);
+                    advanceToPage3();
+                }
+            }, 1000);
+        }
+
+        function advanceToPage3() {
+            // Transition to page 3
+            document.getElementById('page2').classList.remove('active');
+            document.getElementById('page3').classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Show the button to open ads (requires user gesture in Telegram)
+            document.getElementById('openAdsBtn3').style.display = 'block';
+        }
+
+        // Page 3: Open final ads button click
+        document.getElementById('openAdsBtn3').addEventListener('click', () => {
+            // Open third smartlink in Chrome using intent (Android) or Chrome scheme (iOS)
+            openInExternalBrowser(smartlink3);
+            
+            // Hide button, show timer
+            document.getElementById('openAdsBtn3').style.display = 'none';
+            document.getElementById('timerContainer3').style.display = 'block';
+            
+            // Start page 3 timer
+            startPage3Timer();
+        });
+
+        function startPage3Timer() {
+            let timer3 = 15;
+            const timer3Interval = setInterval(() => {
+                timer3--;
+                document.getElementById('timer3').textContent = timer3;
+                
+                if (timer3 <= 0) {
+                    clearInterval(timer3Interval);
+                    fetchVerificationCode();
+                }
+            }, 1000);
+        }
+
+        function fetchVerificationCode() {
+            document.getElementById('page3').classList.remove('active');
+            document.getElementById('loadingPage').classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            fetch(`/verify-ad?session=${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        verificationCode = data.code;
+                        showCode(data.code);
+                    } else {
+                        showError(data.message || 'Verification failed. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Network error. Please check your connection and try again.');
+                });
+        }
+
+        function showCode(code) {
+            document.getElementById('loadingPage').classList.remove('active');
+            document.getElementById('codePage').classList.add('active');
+            document.getElementById('codeValue').textContent = code;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showError(message) {
+            document.getElementById('loadingPage').classList.remove('active');
+            document.getElementById('errorPage').classList.add('active');
+            document.getElementById('errorText').textContent = message;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function copyCode() {
+            if (!verificationCode) return;
+            
+            navigator.clipboard.writeText(verificationCode).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ COPIED!';
+                btn.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy code. Please copy manually: ' + verificationCode);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+[17-Oct-25 02:28:39 PM - INFO] - __init__() - Line 30: cache - Cache initialized: max_size=500, ttl=180s
+[17-Oct-25 02:28:41 PM - INFO] - __init__() - Line 34: database - Successfully connected to MongoDB!
+[17-Oct-25 02:28:43 PM - INFO] - init_database() - Line 66: database - Database indexes created successfully
+[17-Oct-25 02:28:43 PM - INFO] - __init__() - Line 27: ad_monetization - Monetag ad network configured with 0 ad slot(s)
+[17-Oct-25 02:28:43 PM - INFO] - _log() - Line 97: werkzeug - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.71.130:5000
+[17-Oct-25 02:28:43 PM - INFO] - _log() - Line 97: werkzeug - [33mPress CTRL+C to quit[0m
+[17-Oct-25 02:28:44 PM - INFO] - _log() - Line 97: werkzeug - 127.0.0.1 - - [17/Oct/2025 14:28:44] "GET / HTTP/1.1" 200 -
+[17-Oct-25 02:28:47 PM - INFO] - __init__() - Line 36: queue_manager - Queue Manager initialized: 20 concurrent, 100 max queue
+[17-Oct-25 02:28:47 PM - INFO] - start_processor() - Line 42: queue_manager - Queue processor started
+[17-Oct-25 02:28:47 PM - INFO] - _init_queue() - Line 1206: main - Download queue processor initialized
+[17-Oct-25 02:28:47 PM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy004
+[17-Oct-25 02:28:47 PM - INFO] - start_bot() - Line 108: __main__ - Starting Telegram bot from server.py (long polling)
+[17-Oct-25 02:28:52 PM - INFO] - _log() - Line 97: werkzeug - 127.0.0.1 - - [17/Oct/2025 14:28:52] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[17-Oct-25 02:28:54 PM - INFO] - start_bot() - Line 110: __main__ - Bot started successfully, waiting for updates...
+[17-Oct-25 02:31:36 PM - INFO] - verify_and_log() - Line 62: attribution - Bot initialized - Creator: @Wolfy004
+[17-Oct-25 02:32:01 PM - ERROR] - _handle_exception() - Line 433: pyrogram.dispatcher - Unhandled exception: Telegram says: [400 MESSAGE_EMPTY] (caused by "messages.SendMessage") Pyrogram 2.3.68 thinks: The message sent is empty or contains invalid characters
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/dispatcher.py", line 378, in _dispatch_to_handlers
+    await self._execute_handler(handler, *args)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/dispatcher.py", line 405, in _execute_handler
+    await handler.callback(self.client, *args)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/handlers/message_handler.py", line 154, in resolve_future_or_callback
+    await self.original_callback(client, message, *args)
+  File "/home/runner/workspace/access_control.py", line 171, in wrapper
+    return await func(client, message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/access_control.py", line 107, in wrapper
+    return await func(client, message)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 760, in handle_any_message
+    await message.reply(msg)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/sync.py", line 75, in coro_wrapper
+    return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coroutine, main_loop))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/types/messages_and_media/message.py", line 1610, in reply_text
+    return await self._client.send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/sync.py", line 75, in coro_wrapper
+    return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coroutine, main_loop))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/methods/messages/send_message.py", line 212, in send_message
+    r = await self.invoke(rpc)
+        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/sync.py", line 75, in coro_wrapper
+    return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coroutine, main_loop))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/methods/advanced/invoke.py", line 80, in invoke
+    r = await self.session.invoke(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/session/session.py", line 420, in invoke
+    return await self.send(query, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/session/session.py", line 377, in send
+    RPCError.raise_it(result, type(data))
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pyrogram/errors/rpc_error.py", line 93, in raise_it
+    raise getattr(
+pyrogram.errors.exceptions.bad_request_400.MessageEmpty: Telegram says: [400 MESSAGE_EMPTY] (caused by "messages.SendMessage") Pyrogram 2.3.68 thinks: The message sent is empty or contains invalid characters
+[17-Oct-25 02:32:01 PM - INFO] - handle_download() - Line 315: main - Downloading media from URL: https://t.me/c/2018320478/983
+[17-Oct-25 02:32:07 PM - INFO] - handle_download() - Line 375: main - Downloaded media: /home/runner/workspace/downloads/942/(PERMUTATION_&_COMBINATION)Cla_20240213151116.pdf
+[17-Oct-25 02:32:07 PM - INFO] - send_media() - Line 202: helpers.utils - Uploading media: /home/runner/workspace/downloads/942/(PERMUTATION_&_COMBINATION)Cla_20240213151116.pdf (document)

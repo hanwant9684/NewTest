@@ -38,6 +38,10 @@ externalPort = 80
 localPort = 35807
 externalPort = 3000
 
+[[ports]]
+localPort = 37933
+externalPort = 3001
+
 [deployment]
 deploymentTarget = "vm"
 run = ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "--worker-class", "gthread", "--timeout", "120", "server:app"]

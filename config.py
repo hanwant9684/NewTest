@@ -26,6 +26,15 @@ class PyroConf:
         OWNER_ID = 0
 
     FORCE_SUBSCRIBE_CHANNEL = os.getenv("FORCE_SUBSCRIBE_CHANNEL", "")
+    
+    # Optional Dump Channel - Bot will forward all downloaded media here for monitoring
+    # Set this to your channel ID (e.g., -1001234567890) to enable
+    # Leave empty to disable
+    try:
+        dump_channel = os.getenv("DUMP_CHANNEL_ID", "")
+        DUMP_CHANNEL_ID = int(dump_channel) if dump_channel else None
+    except (ValueError, TypeError):
+        DUMP_CHANNEL_ID = None
 
     # Payment and Contact Configuration
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")

@@ -108,6 +108,10 @@ def run_bot():
             main.LOGGER(__name__).info("Starting Telegram bot from server.py (long polling)")
             await main.bot.start()
             main.LOGGER(__name__).info("Bot started successfully, waiting for updates...")
+            
+            # Verify dump channel after bot starts
+            await main.verify_dump_channel()
+            
             # Keep the bot running without signal handlers (thread-safe alternative to idle())
             await asyncio.Event().wait()
         finally:

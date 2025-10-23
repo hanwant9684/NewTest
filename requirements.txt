@@ -40,3 +40,16 @@ python-dotenv
 requests
 TgCrypto
 uvloop
+dnspython
+flask
+flask-compress
+gunicorn
+pillow
+psutil
+Pyleaves
+pymongo
+Pyrofork
+pyrogram
+python-dotenv
+TgCrypto
+uvloop

@@ -351,7 +351,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, user_cli
         )
 
         if chat_message.media_group_id:
-            if not await processMediaGroup(chat_message, bot, message):
+            if not await processMediaGroup(chat_message, bot, message, message.from_user.id):
                 await message.reply(
                     "**Could not extract any valid media from the media group.**"
                 )
@@ -736,7 +736,7 @@ async def global_queue_status_command(client: Client, message: Message):
     status = await download_queue.get_global_status()
     await message.reply(status)
 
-@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "getpremium", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo"]))
+@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "bdl", "myinfo", "upgrade", "premiumlist", "getpremium", "verifypremium", "login", "verify", "password", "logout", "cancel", "canceldownload", "queue", "qstatus", "setthumb", "delthumb", "viewthumb", "addadmin", "removeadmin", "setpremium", "removepremium", "ban", "unban", "broadcast", "adminstats", "userinfo", "testdump"]))
 @force_subscribe
 @check_download_limit
 async def handle_any_message(bot: Client, message: Message):
@@ -902,6 +902,45 @@ async def unban_user_handler(client: Client, message: Message):
 @bot.on_message(filters.command("broadcast") & filters.private)
 async def broadcast_handler(client: Client, message: Message):
     await broadcast_command(client, message)
+
+@bot.on_message(filters.command("testdump") & filters.private)
+@admin_only
+async def test_dump_channel(bot: Client, message: Message):
+    """Test dump channel configuration (admin only)"""
+    from config import PyroConf
+    
+    if not PyroConf.DUMP_CHANNEL_ID:
+        await message.reply("❌ **Dump channel not configured**\n\nSet DUMP_CHANNEL_ID in your environment variables.")
+        return
+    
+    try:
+        channel_id = int(PyroConf.DUMP_CHANNEL_ID)
+        # Try to get chat info
+        chat = await bot.get_chat(channel_id)
+        
+        # Try sending a test message
+        test_msg = await bot.send_message(
+            chat_id=channel_id,
+            text=f"✅ **Dump Channel Test**\n\n👤 Test by Admin: {message.from_user.id}\n\nDump channel is working correctly!"
+        )
+        
+        await message.reply(
+            f"✅ **Dump Channel Working!**\n\n"
+            f"📱 **Channel:** {chat.title}\n"
+            f"🆔 **ID:** `{channel_id}`\n"
+            f"✉️ **Test message sent successfully**\n\n"
+            f"All downloaded media will be forwarded to this channel."
+        )
+    except Exception as e:
+        await message.reply(
+            f"❌ **Dump Channel Error**\n\n"
+            f"**Error:** {str(e)}\n\n"
+            f"**How to fix:**\n"
+            f"1. Forward any message from your channel to @userinfobot to get the correct channel ID\n"
+            f"2. Make sure bot is added to the channel\n"
+            f"3. Make bot an administrator with 'Post Messages' permission\n"
+            f"4. Update DUMP_CHANNEL_ID in Replit Secrets"
+        )
 
 @bot.on_message(filters.command("adminstats") & filters.private)
 async def admin_stats_handler(client: Client, message: Message):
@@ -1214,6 +1253,31 @@ except:
 
 # Verify bot attribution on startup
 verify_attribution()
+
+# Verify dump channel configuration on startup
+async def verify_dump_channel():
+    """Verify that dump channel is accessible if configured"""
+    from config import PyroConf
+    
+    if not PyroConf.DUMP_CHANNEL_ID:
+        LOGGER(__name__).info("Dump channel not configured (optional feature)")
+        return
+    
+    try:
+        channel_id = int(PyroConf.DUMP_CHANNEL_ID)
+        # Try to get channel info to verify bot has access
+        chat = await bot.get_chat(channel_id)
+        LOGGER(__name__).info(f"✅ Dump channel verified: {chat.title} (ID: {channel_id})")
+        LOGGER(__name__).info("All downloaded media will be forwarded to dump channel")
+    except Exception as e:
+        LOGGER(__name__).error(f"❌ Dump channel configuration error: {e}")
+        LOGGER(__name__).error(f"Make sure:")
+        LOGGER(__name__).error(f"  1. DUMP_CHANNEL_ID is correct (e.g., -1001234567890)")
+        LOGGER(__name__).error(f"  2. Bot is added to the channel as administrator")
+        LOGGER(__name__).error(f"  3. Bot has permission to post messages")
+        LOGGER(__name__).error(f"Dump channel feature will be disabled until fixed")
+
+# Note: Dump channel verification is called from server.py after bot starts
 
 if __name__ == "__main__":
     try:

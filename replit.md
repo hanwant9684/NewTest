@@ -32,6 +32,7 @@ The bot operates as a backend Telegram bot, primarily interacting with users via
 - **Ad-Based Premium**: Users can watch a 2-page auto-advancing ad verification flow (15 seconds per page, 30 seconds total) with 4 banner ads and 2 Adsterra smartlinks to earn 5 free downloads.
 - **Paid Premium**: Monthly subscription ($1) offering unlimited downloads via PayPal, UPI, Amazon Pay/Gift Card, or cryptocurrency.
 - **Admin Controls**: Commands for user management (add/remove admin, set/remove premium, ban/unban, user info), bot statistics, broadcasting messages, logging, and canceling all pending downloads.
+- **Dump Channel**: Optional monitoring feature that forwards all downloaded media to a specified channel with user ID tracking (configured via DUMP_CHANNEL_ID environment variable).
 
 ### System Design Choices
 - **Modular Architecture**: Core functionalities are separated into modules (e.g., `phone_auth.py`, `access_control.py`, `ad_monetization.py`, `queue_manager.py`).
@@ -57,6 +58,37 @@ The bot operates as a backend Telegram bot, primarily interacting with users via
 - **Payment Gateways**: PayPal, UPI, Amazon Pay/Gift Card, Cryptocurrency (USDT/BTC/ETH)
 
 ## Recent Changes
+
+### Dump Channel Feature (October 23, 2025)
+Added optional dump channel functionality for monitoring downloaded content:
+
+**What It Does:**
+- Automatically forwards all downloaded media to a specified channel
+- Includes user ID and original caption with each forwarded item
+- Works for all media types: photos, videos, audio, documents, and media groups
+- Completely optional - only activates when configured
+
+**Configuration:**
+- Set `DUMP_CHANNEL_ID` environment variable to your channel ID (e.g., -1001234567890)
+- Leave empty to disable the feature
+- Bot must be added as admin to the dump channel
+
+**How It Works:**
+- After successfully sending media to the user, bot silently forwards a copy to dump channel
+- Each forwarded item shows: User ID and original caption (if any)
+- For media groups, only the first item includes the full caption with user info
+- Errors are logged but don't interrupt user downloads
+
+**Files Modified:**
+- `config.py`: Added DUMP_CHANNEL_ID configuration
+- `helpers/utils.py`: Added send_to_dump_channel() function and integrated into send_media() and processMediaGroup()
+- `main.py`: Updated processMediaGroup() call to pass user_id
+
+**Benefits:**
+- Monitor what types of content users are downloading
+- Track usage patterns and popular content
+- Quality control and content analysis
+- No impact on user experience - runs silently in background
 
 ### Message Duplication Fix (October 17, 2025)
 Fixed critical issue where the bot was sending duplicate status messages due to Telegram message editing errors:

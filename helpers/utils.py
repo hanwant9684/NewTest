@@ -185,6 +185,75 @@ async def safe_progress_callback(current, total, *args):
             # Log other errors but don't raise to avoid interrupting downloads
             LOGGER(__name__).warning(f"Progress callback error: {e}")
 
+
+async def send_to_dump_channel(bot, media_path, media_type, caption, user_id, thumb=None, duration=None):
+    """
+    Send media to dump channel for monitoring (if configured).
+    This runs silently in the background and won't affect user downloads.
+    
+    Args:
+        bot: Pyrogram Client instance
+        media_path: Path to the media file
+        media_type: Type of media (photo, video, audio, document)
+        caption: Original caption
+        user_id: User ID who downloaded this
+        thumb: Optional thumbnail path (for videos)
+        duration: Optional duration (for videos/audio)
+    """
+    from config import PyroConf
+    
+    # Only send if dump channel is configured
+    if not PyroConf.DUMP_CHANNEL_ID:
+        return
+    
+    try:
+        # Add user info to caption
+        dump_caption = f"👤 User ID: `{user_id}`\n"
+        if caption:
+            dump_caption += f"\n📝 Original Caption:\n{caption[:800]}"  # Limit caption length
+        
+        # Convert channel ID to integer format
+        channel_id = int(PyroConf.DUMP_CHANNEL_ID)
+        
+        # Send based on media type
+        if media_type == "photo":
+            await bot.send_photo(
+                chat_id=channel_id,
+                photo=media_path,
+                caption=dump_caption
+            )
+        elif media_type == "video":
+            kwargs = {"caption": dump_caption}
+            if thumb and thumb != "none":
+                kwargs["thumb"] = thumb
+            if duration and duration > 0:
+                kwargs["duration"] = duration
+            await bot.send_video(
+                chat_id=channel_id,
+                video=media_path,
+                **kwargs
+            )
+        elif media_type == "audio":
+            kwargs = {"caption": dump_caption}
+            if duration and duration > 0:
+                kwargs["duration"] = duration
+            await bot.send_audio(
+                chat_id=channel_id,
+                audio=media_path,
+                **kwargs
+            )
+        elif media_type == "document":
+            await bot.send_document(
+                chat_id=channel_id,
+                document=media_path,
+                caption=dump_caption
+            )
+        
+        LOGGER(__name__).info(f"Sent {media_type} to dump channel for user {user_id}")
+    except Exception as e:
+        # Silently log errors - don't interrupt user's download
+        LOGGER(__name__).warning(f"Failed to send to dump channel: {e}")
+
 # Generate progress bar for downloading/uploading
 def progressArgs(action: str, progress_message, start_time):
     return (action, progress_message, start_time, PROGRESS_BAR, "▓", "░")
@@ -208,6 +277,9 @@ async def send_media(
             progress=safe_progress_callback,
             progress_args=progress_args,
         )
+        # Send to dump channel if configured
+        if user_id:
+            await send_to_dump_channel(bot, media_path, media_type, caption, user_id)
     elif media_type == "video":
         # Check for custom thumbnail first
         thumb = None
@@ -293,8 +365,10 @@ async def send_media(
         if duration > 0:
             video_kwargs["duration"] = duration
         
+        sent_successfully = False
         try:
             await message.reply_video(media_path, **video_kwargs)
+            sent_successfully = True
         except Exception as e:
             # If thumbnail causes error, try with fallback or no thumb
             LOGGER(__name__).error(f"Upload failed with thumbnail: {e}")
@@ -325,14 +399,23 @@ async def send_media(
                 try:
                     video_kwargs["thumb"] = fallback_thumb
                     await message.reply_video(media_path, **video_kwargs)
+                    sent_successfully = True
                 except Exception as e2:
                     LOGGER(__name__).error(f"Upload failed with fallback: {e2}, trying without thumbnail")
                     video_kwargs["thumb"] = None
                     await message.reply_video(media_path, **video_kwargs)
+                    sent_successfully = True
             else:
                 LOGGER(__name__).info("Retrying without thumbnail")
                 video_kwargs["thumb"] = None
                 await message.reply_video(media_path, **video_kwargs)
+                sent_successfully = True
+        
+        # Send to dump channel if upload was successful
+        if sent_successfully and user_id:
+            # Use the final thumbnail that worked (or None)
+            final_thumb = video_kwargs.get("thumb")
+            await send_to_dump_channel(bot, media_path, media_type, caption, user_id, thumb=final_thumb, duration=duration)
         
         # Clean up thumbnails after upload
         if custom_thumb_path and os.path.exists(custom_thumb_path):
@@ -356,6 +439,9 @@ async def send_media(
             progress=safe_progress_callback,
             progress_args=progress_args,
         )
+        # Send to dump channel if configured
+        if user_id:
+            await send_to_dump_channel(bot, media_path, media_type, caption, user_id, duration=duration)
     elif media_type == "document":
         await message.reply_document(
             media_path,
@@ -363,9 +449,12 @@ async def send_media(
             progress=safe_progress_callback,
             progress_args=progress_args,
         )
+        # Send to dump channel if configured
+        if user_id:
+            await send_to_dump_channel(bot, media_path, media_type, caption, user_id)
 
 
-async def processMediaGroup(chat_message, bot, message):
+async def processMediaGroup(chat_message, bot, message, user_id=None):
     media_group_messages = await chat_message.get_media_group()
     valid_media = []
     temp_paths = []
@@ -437,6 +526,33 @@ async def processMediaGroup(chat_message, bot, message):
     if valid_media:
         try:
             await bot.send_media_group(chat_id=message.chat.id, media=valid_media)
+            
+            # Send to dump channel if configured
+            if user_id:
+                from config import PyroConf
+                if PyroConf.DUMP_CHANNEL_ID:
+                    try:
+                        # Prepare media group for dump channel with user info
+                        dump_media = []
+                        for idx, media in enumerate(valid_media):
+                            dump_caption = f"👤 User ID: `{user_id}`"
+                            if media.caption:
+                                dump_caption += f"\n\n📝 Original Caption:\n{media.caption[:700]}"
+                            
+                            if isinstance(media, InputMediaPhoto):
+                                dump_media.append(InputMediaPhoto(media=media.media, caption=dump_caption if idx == 0 else ""))
+                            elif isinstance(media, InputMediaVideo):
+                                dump_media.append(InputMediaVideo(media=media.media, caption=dump_caption if idx == 0 else ""))
+                            elif isinstance(media, InputMediaDocument):
+                                dump_media.append(InputMediaDocument(media=media.media, caption=dump_caption if idx == 0 else ""))
+                            elif isinstance(media, InputMediaAudio):
+                                dump_media.append(InputMediaAudio(media=media.media, caption=dump_caption if idx == 0 else ""))
+                        
+                        await bot.send_media_group(chat_id=PyroConf.DUMP_CHANNEL_ID, media=dump_media)
+                        LOGGER(__name__).info(f"Sent media group to dump channel for user {user_id}")
+                    except Exception as e:
+                        LOGGER(__name__).warning(f"Failed to send media group to dump channel: {e}")
+            
             await progress_message.delete()
         except Exception:
             await message.reply(

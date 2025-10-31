@@ -14,11 +14,11 @@ IS_CONSTRAINED = bool(
     os.getenv('REPL_ID')
 )
 
-# Optimized for Render free plan (512MB RAM)
-# Higher connection counts = faster downloads/uploads
-# Each connection uses ~5-10MB RAM, so 8 connections = ~80MB max
-MAX_DOWNLOAD_CONNECTIONS = 8 if IS_CONSTRAINED else 10
-MAX_UPLOAD_CONNECTIONS = 4 if IS_CONSTRAINED else 6
+# Optimized for faster speeds with FastTelethon
+# Increased connection counts for maximum performance
+# Each connection uses ~5-10MB RAM
+MAX_DOWNLOAD_CONNECTIONS = 12 if IS_CONSTRAINED else 16
+MAX_UPLOAD_CONNECTIONS = 8 if IS_CONSTRAINED else 10
 
 async def download_media_fast(
     client: TelegramClient,
@@ -60,12 +60,9 @@ async def download_media_fast(
         else:
             raise ValueError("Unsupported media type")
         
-        # Use FastTelethon for files >= 512KB (lowered from 1MB for better speed)
-        if file_size < 512 * 1024:
-            LOGGER(__name__).debug(f"Small file ({file_size} bytes), using standard download")
-            return await client.download_media(message, file=file, progress_callback=progress_callback)
-        
-        LOGGER(__name__).info(f"FastTelethon download starting: {file} ({file_size} bytes, {MAX_DOWNLOAD_CONNECTIONS} connections)")
+        # Always use FastTelethon for ALL files (faster than standard download)
+        # Even small files benefit from parallel connections
+        LOGGER(__name__).info(f"FastTelethon download starting: {file} ({file_size} bytes, optimized connections)")
         
         with open(file, 'wb') as f:
             await fast_download(
@@ -90,13 +87,9 @@ async def upload_media_fast(
 ):
     file_size = os.path.getsize(file_path)
     
-    # Use FastTelethon for files >= 512KB (lowered from 1MB for better speed)
-    if file_size < 512 * 1024:
-        LOGGER(__name__).debug(f"Small file ({file_size} bytes), using standard upload")
-        return None
-    
+    # Always use FastTelethon for ALL files (faster upload speeds)
     try:
-        LOGGER(__name__).info(f"FastTelethon upload starting: {file_path} ({file_size} bytes, {MAX_UPLOAD_CONNECTIONS} connections)")
+        LOGGER(__name__).info(f"FastTelethon upload starting: {file_path} ({file_size} bytes, optimized connections)")
         
         with open(file_path, 'rb') as f:
             result = await fast_upload(
@@ -114,13 +107,16 @@ async def upload_media_fast(
 
 def _optimized_connection_count(file_size, max_count=MAX_DOWNLOAD_CONNECTIONS, full_size=100*1024*1024):
     """
-    Dynamically scale connection count based on file size for optimal speed
-    - Small files (< 50MB): Use fewer connections to avoid overhead
-    - Large files (>= 100MB): Use maximum connections for best speed
+    Dynamically scale connection count based on file size for maximum speed
+    - Small files (< 1MB): Use 4-6 connections for fast transfer
+    - Medium files (1-50MB): Scale up to 8-10 connections
+    - Large files (>= 50MB): Use maximum connections for best speed
     """
     if file_size >= full_size:
         return max_count
-    # Use at least 3 connections for files >= 5MB (increased from 2)
-    return max(3, math.ceil((file_size / full_size) * max_count))
+    # Minimum 4 connections even for small files (better than standard download)
+    # Scale up aggressively for better performance
+    min_connections = min(6, max_count // 2)
+    return max(min_connections, math.ceil((file_size / full_size) * max_count))
 
 ParallelTransferrer._get_connection_count = staticmethod(_optimized_connection_count)

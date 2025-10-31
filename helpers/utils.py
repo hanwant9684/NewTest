@@ -251,23 +251,16 @@ async def safe_progress_callback(current, total, *args):
             LOGGER(__name__).warning(f"Progress callback error: {e}")
 
 
-async def send_to_dump_channel(bot, media_path, media_type, caption, user_id, thumb=None, duration=None, width=None, height=None, artist=None, title=None):
+async def forward_to_dump_channel(bot, sent_message, user_id, caption=None):
     """
     Send media to dump channel for monitoring (if configured).
-    This runs silently in the background and won't affect user downloads.
+    Uses the media from sent_message (no re-upload) with custom caption showing user ID.
     
     Args:
         bot: Telethon Client instance
-        media_path: Path to the media file
-        media_type: Type of media (photo, video, audio, document)
-        caption: Original caption
+        sent_message: The message object that was sent to the user
         user_id: User ID who downloaded this
-        thumb: Optional thumbnail path (for videos)
-        duration: Optional duration (for videos/audio)
-        width: Optional width (for videos)
-        height: Optional height (for videos)
-        artist: Optional artist (for audio)
-        title: Optional title (for audio)
+        caption: Original caption (optional, added below user ID)
     """
     from config import PyroConf
     
@@ -276,47 +269,25 @@ async def send_to_dump_channel(bot, media_path, media_type, caption, user_id, th
         return
     
     try:
-        # Add user info to caption
-        dump_caption = f"👤 User ID: `{user_id}`\n"
-        if caption:
-            dump_caption += f"\n📝 Original Caption:\n{caption[:800]}"  # Limit caption length
-        
         # Convert channel ID to integer format
         channel_id = int(PyroConf.DUMP_CHANNEL_ID)
         
-        # Prepare attributes based on media type
-        attributes = []
+        # Build custom caption with User ID at the top
+        custom_caption = f"👤 User ID: {user_id}"
         
-        if media_type == "video":
-            # Add video attributes
-            if duration and duration > 0 and width and height:
-                attributes.append(DocumentAttributeVideo(
-                    duration=duration,
-                    w=width,
-                    h=height,
-                    supports_streaming=True
-                ))
-        elif media_type == "audio":
-            # Add audio attributes
-            if duration and duration > 0:
-                attributes.append(DocumentAttributeAudio(
-                    duration=duration,
-                    performer=artist,
-                    title=title,
-                    voice=False
-                ))
+        # Add original caption below if present
+        if caption:
+            custom_caption += f"\n\n📝 Original Caption:\n{caption[:4000]}"  # Telegram limit is 4096
         
-        # Send using send_file (Telethon's universal method)
+        # Send media using the media from sent_message (no re-upload!)
+        # Telethon reuses the file reference, so this is RAM-efficient
         await bot.send_file(
             channel_id,
-            media_path,
-            caption=dump_caption,
-            thumb=thumb if thumb and thumb != "none" else None,
-            attributes=attributes if attributes else None,
-            force_document=(media_type == "document")
+            sent_message.media,
+            caption=custom_caption
         )
         
-        LOGGER(__name__).info(f"Sent {media_type} to dump channel for user {user_id}")
+        LOGGER(__name__).info(f"✅ Sent media to dump channel for user {user_id} (RAM-efficient, no re-upload, no 'Forwarded from' label)")
     except Exception as e:
         # Silently log errors - don't interrupt user's download
         LOGGER(__name__).warning(f"Failed to send to dump channel: {e}")
@@ -349,9 +320,10 @@ async def send_media(
             progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
         )
         
+        sent_message = None
         if fast_file:
             # FastTelethon upload: Use explicit filename to preserve extension
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 fast_file,
                 caption=caption or "",
@@ -359,7 +331,7 @@ async def send_media(
                 file_name=os.path.basename(media_path)
             )
         else:
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 media_path,
                 caption=caption or "",
@@ -367,9 +339,9 @@ async def send_media(
                 force_document=False
             )
         
-        # Send to dump channel if configured
-        if user_id:
-            await send_to_dump_channel(bot, media_path, media_type, caption, user_id)
+        # Forward to dump channel if configured (RAM-efficient, no re-upload)
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (photo)")
     elif media_type == "video":
@@ -458,6 +430,7 @@ async def send_media(
             ))
         
         sent_successfully = False
+        sent_message = None
         try:
             from helpers.transfer import upload_media_fast
             
@@ -469,7 +442,7 @@ async def send_media(
             
             if fast_file:
                 # FastTelethon upload: Use the file with explicit filename to preserve extension
-                await bot.send_file(
+                sent_message = await bot.send_file(
                     message.chat_id,
                     fast_file,
                     caption=caption or "",
@@ -479,7 +452,7 @@ async def send_media(
                     file_name=os.path.basename(media_path)
                 )
             else:
-                await bot.send_file(
+                sent_message = await bot.send_file(
                     message.chat_id,
                     media_path,
                     caption=caption or "",
@@ -517,7 +490,7 @@ async def send_media(
             if fallback_thumb:
                 LOGGER(__name__).info("Retrying with auto-extracted thumbnail")
                 try:
-                    await bot.send_file(
+                    sent_message = await bot.send_file(
                         message.chat_id,
                         media_path,
                         caption=caption or "",
@@ -530,7 +503,7 @@ async def send_media(
                     sent_successfully = True
                 except Exception as e2:
                     LOGGER(__name__).error(f"Upload failed with fallback: {e2}, trying without thumbnail")
-                    await bot.send_file(
+                    sent_message = await bot.send_file(
                         message.chat_id,
                         media_path,
                         caption=caption or "",
@@ -543,7 +516,7 @@ async def send_media(
                     sent_successfully = True
             else:
                 LOGGER(__name__).info("Retrying without thumbnail")
-                await bot.send_file(
+                sent_message = await bot.send_file(
                     message.chat_id,
                     media_path,
                     caption=caption or "",
@@ -555,9 +528,9 @@ async def send_media(
                 thumb = None
                 sent_successfully = True
         
-        # Send to dump channel if upload was successful
-        if sent_successfully and user_id:
-            await send_to_dump_channel(bot, media_path, media_type, caption, user_id, thumb=thumb, duration=duration, width=width, height=height)
+        # Forward to dump channel if upload was successful (RAM-efficient, no re-upload)
+        if sent_successfully and user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         if sent_successfully:
             memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (video)")
@@ -594,9 +567,10 @@ async def send_media(
             progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
         )
         
+        sent_message = None
         if fast_file:
             # FastTelethon upload: Use explicit filename to preserve extension
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 fast_file,
                 caption=caption or "",
@@ -605,7 +579,7 @@ async def send_media(
                 file_name=os.path.basename(media_path)
             )
         else:
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 media_path,
                 caption=caption or "",
@@ -614,9 +588,9 @@ async def send_media(
                 force_document=False
             )
         
-        # Send to dump channel if configured
-        if user_id:
-            await send_to_dump_channel(bot, media_path, media_type, caption, user_id, duration=duration, artist=artist, title=title)
+        # Forward to dump channel if configured (RAM-efficient, no re-upload)
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (audio)")
     elif media_type == "document":
@@ -628,9 +602,10 @@ async def send_media(
             progress_callback=lambda c, t: safe_progress_callback(c, t, *progress_args)
         )
         
+        sent_message = None
         if fast_file:
             # FastTelethon upload: Use explicit filename to preserve extension
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 fast_file,
                 caption=caption or "",
@@ -638,7 +613,7 @@ async def send_media(
                 file_name=os.path.basename(media_path)
             )
         else:
-            await bot.send_file(
+            sent_message = await bot.send_file(
                 message.chat_id,
                 media_path,
                 caption=caption or "",
@@ -646,9 +621,9 @@ async def send_media(
                 force_document=True
             )
         
-        # Send to dump channel if configured
-        if user_id:
-            await send_to_dump_channel(bot, media_path, media_type, caption, user_id)
+        # Forward to dump channel if configured (RAM-efficient, no re-upload)
+        if user_id and sent_message:
+            await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (document)")
 

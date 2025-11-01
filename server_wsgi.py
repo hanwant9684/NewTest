@@ -529,6 +529,9 @@ def run_bot():
     
     async def start_bot():
         import sys
+        # Initialize background tasks list before try block to avoid UnboundLocalError in finally
+        background_tasks = []
+        
         try:
             # CRITICAL: Cleanup orphaned files from previous crashes FIRST
             from helpers.files import cleanup_orphaned_files
@@ -550,21 +553,21 @@ def run_bot():
             main.phone_auth_handler.start_cleanup_task()
             
             from helpers.cleanup import start_periodic_cleanup
-            asyncio.create_task(start_periodic_cleanup(interval_minutes=30))
+            background_tasks.append(asyncio.create_task(start_periodic_cleanup(interval_minutes=30)))
             main.LOGGER(__name__).info("Started periodic download cleanup task")
             
             from helpers.session_manager import session_manager
             await session_manager.start_cleanup_task()
             main.LOGGER(__name__).info("Started periodic session cleanup task (30min idle timeout)")
             
-            asyncio.create_task(periodic_gc_task())
+            background_tasks.append(asyncio.create_task(periodic_gc_task()))
             main.LOGGER(__name__).info("Started periodic garbage collection task")
             
-            asyncio.create_task(cleanup_watchdog_task())
+            background_tasks.append(asyncio.create_task(cleanup_watchdog_task()))
             main.LOGGER(__name__).info("Started cleanup watchdog task (removes expired ad sessions and stale queue items every 5 min)")
             
             from memory_monitor import memory_monitor
-            asyncio.create_task(memory_monitor.periodic_monitor(interval=300))
+            background_tasks.append(asyncio.create_task(memory_monitor.periodic_monitor(interval=300)))
             main.LOGGER(__name__).info("Started periodic memory monitoring (5-minute intervals)")
             
             memory_monitor.log_memory_snapshot("Bot Startup", "Initial state after bot start")
@@ -573,7 +576,7 @@ def run_bot():
             try:
                 from backup_database import periodic_backup
                 backup_interval = int(os.environ.get('BACKUP_INTERVAL_HOURS', '1'))
-                asyncio.create_task(periodic_backup(interval_hours=backup_interval))
+                background_tasks.append(asyncio.create_task(periodic_backup(interval_hours=backup_interval)))
                 main.LOGGER(__name__).info(f"Started periodic local database backup (every {backup_interval}h)")
             except Exception as e:
                 main.LOGGER(__name__).warning(f"Local database backup not enabled: {e}")
@@ -593,7 +596,7 @@ def run_bot():
                     
                     # Start periodic cloud backups (every 10 minutes)
                     cloud_interval_minutes = int(os.environ.get('CLOUD_BACKUP_INTERVAL_MINUTES', '10'))
-                    asyncio.create_task(periodic_cloud_backup(interval_minutes=cloud_interval_minutes))
+                    background_tasks.append(asyncio.create_task(periodic_cloud_backup(interval_minutes=cloud_interval_minutes)))
                     _logger.info(f"Started periodic {cloud_service} backup (every {cloud_interval_minutes} minutes)")
                 else:
                     _logger.info("Cloud backup not configured")
@@ -615,7 +618,7 @@ def run_bot():
                     except Exception as e:
                         main.LOGGER(__name__).error(f"Periodic orphaned cleanup error: {e}")
             
-            asyncio.create_task(periodic_orphaned_cleanup())
+            background_tasks.append(asyncio.create_task(periodic_orphaned_cleanup()))
             main.LOGGER(__name__).info("Started periodic orphaned file cleanup (every 1h)")
             
             _logger.info("About to verify dump channel...")
@@ -629,6 +632,9 @@ def run_bot():
             _logger.info("Bot is now running and listening for updates...")
             await main.bot.run_until_disconnected()
         finally:
+            _logger.info("Bot shutting down gracefully...")
+            
+            # First, disconnect sessions and bot cleanly
             try:
                 from helpers.session_manager import session_manager
                 await session_manager.disconnect_all()
@@ -636,7 +642,25 @@ def run_bot():
             except Exception as e:
                 main.LOGGER(__name__).error(f"Error disconnecting sessions: {e}")
             
-            await main.bot.disconnect()
+            try:
+                await main.bot.disconnect()
+                main.LOGGER(__name__).info("Bot disconnected")
+            except Exception as e:
+                main.LOGGER(__name__).error(f"Error disconnecting bot: {e}")
+            
+            # Then cancel background tasks to prevent "Task was destroyed" errors
+            try:
+                if background_tasks:
+                    _logger.info(f"Cancelling {len(background_tasks)} background tasks...")
+                    for task in background_tasks:
+                        if not task.done():
+                            task.cancel()
+                    # Wait for background tasks to finish cancellation
+                    await asyncio.gather(*background_tasks, return_exceptions=True)
+                    _logger.info("All background tasks cancelled successfully")
+            except Exception as e:
+                _logger.error(f"Error cancelling background tasks: {e}")
+            
             main.LOGGER(__name__).info("Bot stopped")
     
     loop.run_until_complete(start_bot())

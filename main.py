@@ -464,18 +464,21 @@ async def handle_download(bot_client, event, post_url: str, user_client=None, in
                 if not success:
                     LOGGER(__name__).error(f"Failed to increment usage for user {event.sender_id} after media group download")
                 
-                # Show completion message with buttons for all free users
+                # Show completion message based on user type
                 user_type = db.get_user_type(event.sender_id)
                 if user_type == 'free':
+                    # Free users: show buttons for ads and upgrade
                     upgrade_keyboard = InlineKeyboardMarkup([
                         [InlineKeyboardButton.callback(f"🎁 Watch Ad & Get {PREMIUM_DOWNLOADS} Downloads", "watch_ad_now")],
                         [InlineKeyboardButton.callback("💰 Upgrade to Premium", "upgrade_premium")]
                     ])
-                    
                     await event.respond(
                         "✅ **Download complete**",
                         buttons=upgrade_keyboard.to_telethon()
                     )
+                else:
+                    # Premium/Admin users: simple completion message without buttons
+                    await event.respond("✅ **Download complete**")
             
             return
 
@@ -519,13 +522,17 @@ async def handle_download(bot_client, event, post_url: str, user_client=None, in
                     event.sender_id,
                 )
 
+                # Cleanup throttle data for this progress message
+                from helpers.utils import _progress_throttle
+                _progress_throttle.cleanup(progress_message.id)
+                
                 await progress_message.delete()
 
                 # Only increment usage after successful download
                 if increment_usage:
                     db.increment_usage(event.sender_id)
                     
-                    # Show completion message with buttons for all free users
+                    # Show completion message with buttons for all users
                     user_type = db.get_user_type(event.sender_id)
                     if user_type == 'free':
                         upgrade_markup = InlineKeyboardMarkup([
@@ -536,6 +543,9 @@ async def handle_download(bot_client, event, post_url: str, user_client=None, in
                             "✅ **Download complete**",
                             buttons=upgrade_markup.to_telethon()
                         )
+                    else:
+                        # Send simple completion message for premium/admin users
+                        await event.respond("✅ **Download complete**")
             finally:
                 # CRITICAL: Always cleanup downloaded file, even if errors occur during upload
                 cleanup_download(media_path)

@@ -21,7 +21,8 @@ from helpers.files import (
 )
 
 from helpers.msg import (
-    get_parsed_msg
+    get_parsed_msg,
+    get_file_name
 )
 
 from helpers.transfer import download_media_fast
@@ -677,10 +678,14 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     )
 
     for msg in grouped_messages:
-        if msg.photo or msg.video or msg.document or msg.audio:
+        if msg.media or msg.photo or msg.video or msg.document or msg.audio:
             try:
+                # Get filename from message
+                filename = get_file_name(msg.id, msg)
+                # Use message.id as folder_id to group all media group files together
+                download_path = get_download_path(message.id, filename)
+                
                 # Use FastTelethon to download media from private channels (faster)
-                download_path = get_download_path()
                 media_path = await download_media_fast(
                     client=client_for_download,
                     message=msg,
@@ -698,7 +703,7 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                     captions.append(caption_text)
 
             except Exception as e:
-                LOGGER(__name__).info(f"Error downloading media: {e}")
+                LOGGER(__name__).error(f"Error downloading media from message {msg.id}: {e}")
                 continue
 
     LOGGER(__name__).info(f"Valid media count: {len(files_to_send)}")

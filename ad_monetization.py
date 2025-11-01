@@ -17,7 +17,7 @@ class AdMonetization:
         self.services = {
             'droplink': os.getenv('DROPLINK_API_KEY'),
             'gplinks': os.getenv('GPLINKS_API_KEY'),
-            'shrtfly': os.getenv('shrtfly_API_KEY'),
+            'shrtfly': os.getenv('SHRTFLY_API_KEY'),
             'upshrink': os.getenv('UPSHRINK_API_KEY')
         }
         

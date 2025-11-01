@@ -181,6 +181,80 @@ async def get_video_thumbnail(video_file, duration):
     return output
 
 
+# Progress Throttle Helper to prevent Telegram API rate limits
+class ProgressThrottle:
+    """
+    Centralized progress throttling to prevent Telegram API rate limits.
+    Enforces minimum time between updates and handles rate limit errors gracefully.
+    """
+    def __init__(self):
+        self.message_throttles = {}  # message_id -> throttle data
+    
+    def should_update(self, message_id, current, total, now):
+        """
+        Determine if progress should be updated based on throttle rules.
+        
+        Rules:
+        - Minimum 5 seconds between updates (or 10% progress change)
+        - If rate limited, exponential backoff up to 60 seconds
+        - Always allow 100% completion
+        """
+        if message_id not in self.message_throttles:
+            self.message_throttles[message_id] = {
+                'last_update_time': 0,
+                'last_percentage': 0,
+                'rate_limited': False,
+                'backoff_duration': 5,  # Start with 5 seconds
+                'cooldown_until': 0
+            }
+        
+        throttle = self.message_throttles[message_id]
+        percentage = (current / total) * 100 if total > 0 else 0
+        
+        # Always allow 100% completion
+        if percentage >= 100:
+            return True
+        
+        # If we're in cooldown from rate limiting, don't update
+        if throttle['cooldown_until'] > now:
+            return False
+        
+        # Check time and percentage thresholds
+        time_diff = now - throttle['last_update_time']
+        percentage_diff = percentage - throttle['last_percentage']
+        
+        # Require minimum 5 seconds OR 10% progress
+        min_time = throttle['backoff_duration']
+        return time_diff >= min_time or percentage_diff >= 10
+    
+    def mark_updated(self, message_id, percentage, now):
+        """Mark that an update was successfully sent"""
+        if message_id in self.message_throttles:
+            throttle = self.message_throttles[message_id]
+            throttle['last_update_time'] = now
+            throttle['last_percentage'] = percentage
+            # Reset backoff on successful update
+            throttle['rate_limited'] = False
+            throttle['backoff_duration'] = 5
+    
+    def mark_rate_limited(self, message_id, now):
+        """Mark that we hit a rate limit and implement exponential backoff"""
+        if message_id in self.message_throttles:
+            throttle = self.message_throttles[message_id]
+            throttle['rate_limited'] = True
+            # Exponential backoff: 5s -> 10s -> 20s -> 40s -> 60s (max)
+            throttle['backoff_duration'] = min(throttle['backoff_duration'] * 2, 60)
+            throttle['cooldown_until'] = now + throttle['backoff_duration']
+            LOGGER(__name__).info(f"Rate limited - backing off for {throttle['backoff_duration']}s")
+    
+    def cleanup(self, message_id):
+        """Remove throttle data when done"""
+        if message_id in self.message_throttles:
+            del self.message_throttles[message_id]
+
+# Global throttle instance
+_progress_throttle = ProgressThrottle()
+
 # Native Telethon progress callback (replaces Pyleaves to reduce RAM)
 async def safe_progress_callback(current, total, *args):
     """
@@ -198,25 +272,16 @@ async def safe_progress_callback(current, total, *args):
         progress_message = args[1] if len(args) > 1 else None
         start_time = args[2] if len(args) > 2 else time()
         
-        # Don't update too frequently (every 3% or 1.5 seconds)
-        now = time()
-        percentage = (current / total) * 100 if total > 0 else 0
-        
         # Guard against None progress_message
         if not progress_message:
             return
         
-        # Get last update info from progress message
-        if not hasattr(progress_message, '_last_update_time'):
-            progress_message._last_update_time = 0
-            progress_message._last_percentage = 0
+        now = time()
+        percentage = (current / total) * 100 if total > 0 else 0
+        message_id = progress_message.id
         
-        time_diff = now - progress_message._last_update_time
-        percentage_diff = percentage - progress_message._last_percentage
-        
-        # Only update if 1.5 seconds passed OR 3% progress made
-        # Always show final 100% update
-        if percentage < 100 and time_diff < 1.5 and percentage_diff < 3:
+        # Check throttle - only update if allowed
+        if not _progress_throttle.should_update(message_id, current, total, now):
             return
         
         # Calculate speed and ETA
@@ -240,15 +305,22 @@ async def safe_progress_callback(current, total, *args):
             f"⏱️ ETA: {get_readable_time(int(eta))}"
         )
         
-        # Update message (already guarded above, but defensive)
+        # Try to update message
         await progress_message.edit(progress_text)
-        progress_message._last_update_time = now
-        progress_message._last_percentage = percentage
+        # Mark successful update
+        _progress_throttle.mark_updated(message_id, percentage, now)
             
     except Exception as e:
-        error_str = str(e)
+        error_str = str(e).lower()
+        
+        # Check if it's a rate limit error
+        if 'wait of' in error_str and 'seconds is required' in error_str:
+            # This is a rate limit error - mark it and back off
+            if progress_message:
+                _progress_throttle.mark_rate_limited(progress_message.id, time())
+            LOGGER(__name__).warning(f"Rate limited by Telegram API - backing off")
         # Silently ignore errors related to deleted or invalid messages
-        if any(err in error_str.lower() for err in ['message_id_invalid', 'message not found', 'message to edit not found', 'message can\'t be edited']):
+        elif any(err in error_str for err in ['message_id_invalid', 'message not found', 'message to edit not found', 'message can\'t be edited']):
             LOGGER(__name__).debug(f"Progress message was deleted or invalid, ignoring: {e}")
         else:
             # Log other errors but don't raise to avoid interrupting downloads
@@ -772,12 +844,17 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
                         pass
                 continue
 
-    # Final cleanup and summary
+    # Cleanup throttle data for this progress message
+    _progress_throttle.cleanup(progress_message.id)
+    
+    # Delete progress message
     await progress_message.delete()
     
     if files_sent_count == 0:
         await message.reply("**❌ No valid media found in the group**")
         return 0
     
+    # Don't send completion message here - let main.py handle it based on user type
+    # This allows customized messages for free vs premium users
     LOGGER(__name__).info(f"Media group complete: {files_sent_count}/{total_files} files sent successfully")
     return files_sent_count

@@ -10,6 +10,15 @@ This is a Telegram bot for downloading and forwarding media from private/public 
 
 ## Recent Changes
 
+- **2025-11-01:** Fixed critical ad verification bug - Premature code generation
+  - **Problem:** URL shortener services validate links before shortening, which triggered verification code generation before users even received the link
+  - **Solution:** Implemented two-step verification with landing page
+  - When users click the shortened link, they now see a landing page with a "Get Verification Code" button
+  - Verification codes are only generated when the button is clicked (confirm=1 parameter)
+  - This prevents shortener validation requests from consuming sessions
+  - Tightened security by requiring exact match `confirm == '1'`
+  - **Impact:** Users can now reliably receive and use their verification codes
+
 - **2025-11-01:** Replaced ARLinks with Shrtfly URL shortener
   - Updated `ad_monetization.py` to use Shrtfly (https://shrtfly.com/) instead of ARLinks
   - Added SHRTFLY_API_KEY to environment secrets

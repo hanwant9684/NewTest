@@ -12,6 +12,58 @@ from logger import LOGGER
 # Initialize module logger
 _logger = LOGGER(__name__)
 
+def load_landing_page(session_id):
+    """Landing page shown before ad verification - prevents premature code generation"""
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Complete Verification</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }}
+        .container {{ background: white; border-radius: 20px; padding: 40px; max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); text-align: center; }}
+        .icon {{ font-size: 64px; margin-bottom: 20px; animation: scaleIn 0.5s ease-out; }}
+        @keyframes scaleIn {{ from {{ transform: scale(0); opacity: 0; }} to {{ transform: scale(1); opacity: 1; }} }}
+        h1 {{ color: #2d3748; margin-bottom: 15px; font-size: 28px; }}
+        .message {{ color: #718096; margin-bottom: 30px; font-size: 16px; line-height: 1.6; }}
+        .instructions {{ background: #edf2f7; border-radius: 12px; padding: 20px; text-align: left; margin: 25px 0; }}
+        .instructions h3 {{ color: #2d3748; font-size: 18px; margin-bottom: 15px; }}
+        .instructions ol {{ color: #4a5568; padding-left: 20px; line-height: 1.8; }}
+        .btn {{ border: none; padding: 16px 40px; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer; margin: 10px 5px; transition: all 0.3s ease; display: inline-block; text-decoration: none; min-width: 250px; }}
+        .btn-primary {{ background: #48bb78; color: white; }}
+        .btn-primary:hover {{ background: #38a169; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4); }}
+        @media (max-width: 500px) {{
+            .container {{ padding: 30px 20px; }}
+            h1 {{ font-size: 24px; }}
+            .btn {{ min-width: 100%; margin: 8px 0; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🎯</div>
+        <h1>Almost There!</h1>
+        <p class="message">You've successfully completed the ad. Click the button below to get your verification code.</p>
+        
+        <div class="instructions">
+            <h3>📋 What happens next?</h3>
+            <ol>
+                <li>Click "Get Verification Code" below</li>
+                <li>Copy your unique code</li>
+                <li>Go back to the Telegram bot</li>
+                <li>Enter the code to unlock premium downloads</li>
+            </ol>
+        </div>
+        
+        <a href="/verify-ad?session={escape(session_id)}&confirm=1" class="btn btn-primary">✅ Get Verification Code</a>
+    </div>
+</body>
+</html>'''
+    return html
+
 def load_template(code, title, message, bot_username):
     """Minimal HTML template - replaces Jinja2"""
     icon = '✅' if code else '❌'
@@ -214,13 +266,19 @@ def application(environ, start_response):
             query_string = environ.get('QUERY_STRING', '')
             params = parse_qs(query_string)
             session_id = params.get('session', [''])[0].strip()
+            confirm = params.get('confirm', [''])[0].strip()
             
             # Log all verification attempts for debugging
-            LOGGER(__name__).info(f"Received /verify-ad request with session: {session_id[:16] if session_id else 'empty'}...")
+            LOGGER(__name__).info(f"Received /verify-ad request with session: {session_id[:16] if session_id else 'empty'}... | confirm={confirm}")
             
             if not session_id:
                 html = load_template('', 'Invalid Request', 'No session ID provided. Please use the link from /getpremium command.', PyroConf.BOT_USERNAME or '')
+            elif confirm != '1':
+                # Show landing page - prevents shortener services from triggering code generation
+                LOGGER(__name__).info(f"Showing landing page for session {session_id[:16]}... (no confirm parameter)")
+                html = load_landing_page(session_id)
             else:
+                # User clicked "Continue" button - now generate the code
                 success, code, message = ad_monetization.verify_ad_completion(session_id)
                 
                 if success:

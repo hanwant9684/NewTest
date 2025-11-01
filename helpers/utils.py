@@ -304,10 +304,15 @@ def progressArgs(action: str, progress_message, start_time):
 async def send_media(
     bot, message, media_path, media_type, caption, progress_message, start_time, user_id=None
 ):
+    """Upload media with all safeguards (size checks, fast uploads, thumbnails, dump channel).
+    
+    Returns:
+        bool: True if upload succeeded, False if it was rejected or failed
+    """
     file_size = os.path.getsize(media_path)
 
     if not await fileSizeLimit(file_size, message, "upload"):
-        return
+        return False
 
     from memory_monitor import memory_monitor
     memory_monitor.log_memory_snapshot("Upload Start", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} ({media_type})")
@@ -348,6 +353,7 @@ async def send_media(
             await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (photo)")
+        return True
     elif media_type == "video":
         # Check for custom thumbnail first
         thumb = None
@@ -550,6 +556,7 @@ async def send_media(
                 os.remove(fallback_thumb)
             except:
                 pass
+        return True
     elif media_type == "audio":
         duration, artist, title = await get_media_info(media_path)
         
@@ -597,6 +604,7 @@ async def send_media(
             await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (audio)")
+        return True
     elif media_type == "document":
         from helpers.transfer import upload_media_fast
         
@@ -630,10 +638,15 @@ async def send_media(
             await forward_to_dump_channel(bot, sent_message, user_id, caption)
         
         memory_monitor.log_memory_snapshot("Upload Complete", f"User {user_id or 'unknown'}: {os.path.basename(media_path)} (document)")
+        return True
 
 
 async def processMediaGroup(chat_message, bot, message, user_id=None, user_client=None):
     """Process and download a media group (multiple files in one post)
+    
+    ONE-AT-A-TIME APPROACH: Downloads and uploads each file sequentially to minimize RAM usage.
+    Uses send_media() helper to preserve all safeguards (size checks, fast uploads, thumbnails, dump channel).
+    Files are deleted immediately after upload to free memory.
     
     Args:
         chat_message: The Telegram message containing the media group
@@ -667,104 +680,104 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     # Sort by ID to maintain order
     grouped_messages.sort(key=lambda m: m.id)
     
-    files_to_send = []
-    temp_paths = []
-    captions = []
-
+    total_files = len(grouped_messages)
+    files_sent_count = 0
+    
     start_time = time()
-    progress_message = await message.reply("📥 Downloading media group...")
+    progress_message = await message.reply(f"📥 Processing media group ({total_files} files)...")
     LOGGER(__name__).info(
-        f"Downloading media group with {len(grouped_messages)} items..."
+        f"Processing media group with {total_files} items (one-at-a-time mode for low RAM usage)..."
     )
 
-    for msg in grouped_messages:
+    # Process each file one at a time: download → upload (via send_media) → delete → next
+    for idx, msg in enumerate(grouped_messages, 1):
         if msg.media or msg.photo or msg.video or msg.document or msg.audio:
+            media_path = None
             try:
+                # Update progress
+                await progress_message.edit(
+                    f"📥 Processing file {idx}/{total_files}..."
+                )
+                
                 # Get filename from message
                 filename = get_file_name(msg.id, msg)
                 # Use message.id as folder_id to group all media group files together
                 download_path = get_download_path(message.id, filename)
                 
-                # Use FastTelethon to download media from private channels (faster)
+                # STEP 1: Download this file
+                LOGGER(__name__).info(f"Downloading file {idx}/{total_files}: {filename}")
                 media_path = await download_media_fast(
                     client=client_for_download,
                     message=msg,
                     file=download_path,
                     progress_callback=lambda c, t: safe_progress_callback(
-                        c, t, *progressArgs("📥 FastTelethon Download", progress_message, start_time)
+                        c, t, *progressArgs(f"📥 Download {idx}/{total_files}", progress_message, start_time)
                     )
                 )
                 
-                if media_path:
-                    temp_paths.append(media_path)
-                    files_to_send.append(media_path)
-                    # Get caption (preserve formatting)
-                    caption_text = msg.text or ""
-                    captions.append(caption_text)
-
+                if not media_path:
+                    LOGGER(__name__).warning(f"File {idx}/{total_files} download failed: no media path returned")
+                    continue
+                
+                # Determine media type (same logic as in main.py)
+                media_type = (
+                    "photo"
+                    if msg.photo
+                    else "video"
+                    if msg.video
+                    else "audio"
+                    if msg.audio
+                    else "document"
+                )
+                
+                # Get caption (preserve formatting)
+                caption_text = msg.text or ""
+                upload_caption = caption_text
+                
+                # STEP 2: Upload this file using send_media (preserves all safeguards)
+                # send_media handles: file size checks, fast uploads, thumbnails, dump channel forwarding
+                LOGGER(__name__).info(f"Uploading file {idx}/{total_files} to user (via send_media)")
+                upload_success = await send_media(
+                    bot=bot,
+                    message=message,
+                    media_path=media_path,
+                    media_type=media_type,
+                    caption=upload_caption,
+                    progress_message=progress_message,
+                    start_time=start_time,
+                    user_id=user_id
+                )
+                
+                # Only count as sent if upload succeeded
+                if upload_success:
+                    files_sent_count += 1
+                    LOGGER(__name__).info(f"Successfully processed file {idx}/{total_files}")
+                else:
+                    LOGGER(__name__).warning(f"File {idx}/{total_files} was not sent (rejected by size limit or other error)")
+                
+                # STEP 3: Delete the file immediately to free RAM
+                try:
+                    cleanup_download(media_path)
+                    LOGGER(__name__).info(f"Cleaned up file {idx}/{total_files}: {media_path}")
+                except Exception as cleanup_err:
+                    LOGGER(__name__).warning(f"Failed to cleanup file {idx}/{total_files}: {cleanup_err}")
+                
             except Exception as e:
-                LOGGER(__name__).error(f"Error downloading media from message {msg.id}: {e}")
+                LOGGER(__name__).error(f"Error processing file {idx}/{total_files} from message {msg.id}: {e}")
+                # Clean up on error
+                if media_path:
+                    try:
+                        cleanup_download(media_path)
+                    except:
+                        pass
                 continue
 
-    LOGGER(__name__).info(f"Valid media count: {len(files_to_send)}")
-
-    try:
-        if files_to_send:
-            try:
-                # Send as album using Telethon's send_file with list of files
-                # Only first file gets the caption in albums
-                await bot.send_file(
-                    message.chat_id,
-                    files_to_send,
-                    caption=captions[0] if captions else ""
-                )
-                
-                # Send to dump channel if configured
-                if user_id:
-                    from config import PyroConf
-                    if PyroConf.DUMP_CHANNEL_ID:
-                        try:
-                            dump_caption = f"👤 User ID: `{user_id}`"
-                            if captions and captions[0]:
-                                dump_caption += f"\n\n📝 Original Caption:\n{captions[0][:700]}"
-                            
-                            await bot.send_file(
-                                PyroConf.DUMP_CHANNEL_ID,
-                                files_to_send,
-                                caption=dump_caption
-                            )
-                            LOGGER(__name__).info(f"Sent media group to dump channel for user {user_id}")
-                        except Exception as e:
-                            LOGGER(__name__).warning(f"Failed to send media group to dump channel: {e}")
-                
-                await progress_message.delete()
-            except Exception as e:
-                LOGGER(__name__).error(f"Failed to send media group: {e}")
-                await message.reply(
-                    "**❌ Failed to send media group, trying individual uploads**"
-                )
-                # Try sending individually
-                for idx, file_path in enumerate(files_to_send):
-                    try:
-                        caption = captions[idx] if idx < len(captions) else ""
-                        await bot.send_file(
-                            message.chat_id,
-                            file_path,
-                            caption=caption
-                        )
-                    except Exception as e:
-                        LOGGER(__name__).error(f"Failed to send individual file {file_path}: {e}")
-                        continue
-                await progress_message.delete()
-        else:
-            await progress_message.edit("**❌ No valid media found in the group**")
-            return 0
-    finally:
-        # Cleanup downloaded files
-        for path in temp_paths:
-            try:
-                cleanup_download(path)
-            except:
-                pass
-
-    return len(files_to_send)
+    # Final cleanup and summary
+    await progress_message.delete()
+    
+    if files_sent_count == 0:
+        await message.reply("**❌ No valid media found in the group**")
+        return 0
+    
+    LOGGER(__name__).info(f"Media group complete: {files_sent_count}/{total_files} files sent successfully")
+    return files_sent_count

@@ -10,6 +10,16 @@ This is a Telegram bot for downloading and forwarding media from private/public 
 
 ## Recent Changes
 
+- **2025-11-01:** Optimized media group downloads to prevent high RAM usage
+  - **Problem:** Media groups were downloading all files into memory before uploading, causing high RAM usage and potential out-of-memory crashes
+  - **Solution:** Implemented sequential file processing (download → upload → delete → next)
+  - Modified `processMediaGroup()` in `helpers/utils.py` to process files one at a time
+  - Modified `send_media()` to return boolean success/failure for accurate tracking
+  - Each file is now deleted immediately after upload to free RAM
+  - Preserves all safeguards: file size checks, fast uploads, thumbnails, dump channel forwarding
+  - **Trade-off:** Files are now sent as individual messages instead of grouped albums (necessary for RAM efficiency)
+  - **Impact:** Bot can now handle large media groups without running out of memory
+
 - **2025-11-01:** Fixed critical ad verification bug - Premature code generation
   - **Problem:** URL shortener services validate links before shortening, which triggered verification code generation before users even received the link
   - **Solution:** Implemented two-step verification with landing page

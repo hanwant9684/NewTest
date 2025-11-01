@@ -17,7 +17,7 @@ class AdMonetization:
         self.services = {
             'droplink': os.getenv('DROPLINK_API_KEY'),
             'gplinks': os.getenv('GPLINKS_API_KEY'),
-            'arlinks': os.getenv('ARLINKS_API_KEY'),
+            'shrtfly': os.getenv('shrtfly_API_KEY'),
             'upshrink': os.getenv('UPSHRINK_API_KEY')
         }
         
@@ -193,8 +193,8 @@ class AdMonetization:
             return self._shorten_with_droplink(long_url)
         return result
     
-    def _shorten_with_arlinks_only(self, long_url: str) -> str:
-        """Shorten URL using arlinks.in API without fallback"""
+    def _shorten_with_shrtfly_only(self, long_url: str) -> str:
+        """Shorten URL using shrtfly.com API without fallback"""
         try:
             import orjson
         except ImportError:
@@ -203,14 +203,14 @@ class AdMonetization:
         from urllib.parse import urlencode
         from urllib.error import URLError, HTTPError
         
-        api_key = self.services.get('arlinks')
+        api_key = self.services.get('shrtfly')
         if not api_key:
-            LOGGER(__name__).warning("ARLINKS_API_KEY not configured")
+            LOGGER(__name__).warning("shrtfly_API_KEY not configured")
             return long_url
         
         try:
             params = urlencode({"api": api_key, "url": long_url})
-            url = f"https://arlinks.in/api?{params}"
+            url = f"https://shrtfly.com/api?{params}"
             
             req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urlopen(req, timeout=10) as response:
@@ -220,23 +220,23 @@ class AdMonetization:
                     short_url = data.get("shortenedUrl")
                     
                     if short_url:
-                        LOGGER(__name__).info(f"Successfully shortened URL via arlinks.in: {short_url}")
+                        LOGGER(__name__).info(f"Successfully shortened URL via shrtfly.com: {short_url}")
                         return short_url
                     else:
-                        LOGGER(__name__).error(f"ARLinks API response missing shortenedUrl: {data}")
+                        LOGGER(__name__).error(f"shrtfly API response missing shortenedUrl: {data}")
                 else:
-                    LOGGER(__name__).error(f"ARLinks API returned non-success status: {data}")
+                    LOGGER(__name__).error(f"shrtfly API returned non-success status: {data}")
         
         except (URLError, HTTPError) as e:
-            LOGGER(__name__).error(f"Failed to shorten URL with arlinks.in: {e}")
+            LOGGER(__name__).error(f"Failed to shorten URL with shrtfly.com: {e}")
         except Exception as e:
-            LOGGER(__name__).error(f"Failed to shorten URL with arlinks.in: {e}")
+            LOGGER(__name__).error(f"Failed to shorten URL with shrtfly.com: {e}")
         
         return long_url
     
-    def _shorten_with_arlinks(self, long_url: str) -> str:
-        """Shorten URL using arlinks.in API (using urllib instead of requests)"""
-        result = self._shorten_with_arlinks_only(long_url)
+    def _shorten_with_shrtfly(self, long_url: str) -> str:
+        """Shorten URL using shrtfly.com API (using urllib instead of requests)"""
+        result = self._shorten_with_shrtfly_only(long_url)
         if result == long_url:
             LOGGER(__name__).info("Falling back to droplink.co")
             return self._shorten_with_droplink(long_url)
@@ -296,7 +296,7 @@ class AdMonetization:
         service_map = {
             0: ('droplink', self._shorten_with_droplink_only),
             1: ('gplinks', self._shorten_with_gplinks_only),
-            2: ('arlinks', self._shorten_with_arlinks_only),
+            2: ('shrtfly', self._shorten_with_shrtfly_only),
             3: ('upshrink', self._shorten_with_upshrink_only)
         }
         
@@ -328,7 +328,7 @@ class AdMonetization:
         """Generate monetized ad link using per-user rotation system
         
         Each user gets different shortener on each /getpremium request:
-        1st request: Droplink -> 2nd: GPLinks -> 3rd: ARLinks -> 4th: UpShrink -> 5th: Droplink (cycle repeats)
+        1st request: Droplink -> 2nd: GPLinks -> 3rd: shrtfly -> 4th: UpShrink -> 5th: Droplink (cycle repeats)
         
         If a shortener is not configured or fails, automatically tries the next one in rotation.
         """

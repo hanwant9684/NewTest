@@ -10,6 +10,12 @@ This is a Telegram bot for downloading and forwarding media from private/public 
 
 ## Recent Changes
 
+- **2025-11-01:** Replaced ARLinks with Shrtfly URL shortener
+  - Updated `ad_monetization.py` to use Shrtfly (https://shrtfly.com/) instead of ARLinks
+  - Added SHRTFLY_API_KEY to environment secrets
+  - Updated documentation (README.md and replit.md) to reflect the change
+  - URL shortener rotation now: Droplink → GPLinks → Shrtfly → UpShrink (repeats)
+
 - **2025-11-01:** Project imported from GitHub and configured for Replit environment
   - Installed all Python dependencies (Telethon, cryptg, psutil, uvloop, waitress, orjson)
   - Configured workflow to run WSGI server on port 5000
@@ -75,7 +81,7 @@ This is a Telegram bot for downloading and forwarding media from private/public 
 - `FORCE_SUBSCRIBE_CHANNEL` - Channel for forced subscription
 - `ADMIN_USERNAME` - Bot admin username for contact
 - `PAYPAL_URL`, `UPI_ID`, `TELEGRAM_TON`, `CRYPTO_ADDRESS` - Payment methods
-- `DROPLINK_API_KEY`, `GPLINKS_API_KEY`, `ARLINKS_API_KEY`, `UPSHRINK_API_KEY` - URL shortener API keys
+- `DROPLINK_API_KEY`, `GPLINKS_API_KEY`, `SHRTFLY_API_KEY`, `UPSHRINK_API_KEY` - URL shortener API keys
 - `SESSION_STRING` - Admin session for downloads
 - `DUMP_CHANNEL_ID` - Channel ID for media forwarding
 - `CLOUD_BACKUP_SERVICE` - Set to "github" for cloud backup

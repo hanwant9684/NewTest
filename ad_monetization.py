@@ -205,7 +205,7 @@ class AdMonetization:
         
         api_key = self.services.get('shrtfly')
         if not api_key:
-            LOGGER(__name__).warning("shrtfly_API_KEY not configured")
+            LOGGER(__name__).warning("SHRTFLY_API_KEY not configured")
             return long_url
         
         try:
@@ -217,15 +217,16 @@ class AdMonetization:
                 data = orjson.loads(response.read())
                 
                 if data.get("status") == "success":
-                    short_url = data.get("shortenedUrl")
+                    result = data.get("result", {})
+                    short_url = result.get("shorten_url")
                     
                     if short_url:
                         LOGGER(__name__).info(f"Successfully shortened URL via shrtfly.com: {short_url}")
                         return short_url
                     else:
-                        LOGGER(__name__).error(f"shrtfly API response missing shortenedUrl: {data}")
+                        LOGGER(__name__).error(f"Shrtfly API response missing shorten_url: {data}")
                 else:
-                    LOGGER(__name__).error(f"shrtfly API returned non-success status: {data}")
+                    LOGGER(__name__).error(f"Shrtfly API returned non-success status: {data}")
         
         except (URLError, HTTPError) as e:
             LOGGER(__name__).error(f"Failed to shorten URL with shrtfly.com: {e}")
@@ -328,7 +329,7 @@ class AdMonetization:
         """Generate monetized ad link using per-user rotation system
         
         Each user gets different shortener on each /getpremium request:
-        1st request: Droplink -> 2nd: GPLinks -> 3rd: shrtfly -> 4th: UpShrink -> 5th: Droplink (cycle repeats)
+        1st request: Droplink -> 2nd: GPLinks -> 3rd: Shrtfly -> 4th: UpShrink -> 5th: Droplink (cycle repeats)
         
         If a shortener is not configured or fails, automatically tries the next one in rotation.
         """

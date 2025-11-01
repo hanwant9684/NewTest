@@ -16,12 +16,15 @@ from telethon.tl.types import (
 
 from helpers.files import (
     fileSizeLimit,
-    cleanup_download
+    cleanup_download,
+    get_download_path
 )
 
 from helpers.msg import (
     get_parsed_msg
 )
+
+from helpers.transfer import download_media_fast
 
 # Try to import PIL for thumbnail processing (optional)
 try:
@@ -676,11 +679,14 @@ async def processMediaGroup(chat_message, bot, message, user_id=None, user_clien
     for msg in grouped_messages:
         if msg.photo or msg.video or msg.document or msg.audio:
             try:
-                # Use user_client to download media from private channels
-                media_path = await client_for_download.download_media(
-                    msg,
+                # Use FastTelethon to download media from private channels (faster)
+                download_path = get_download_path()
+                media_path = await download_media_fast(
+                    client=client_for_download,
+                    message=msg,
+                    file=download_path,
                     progress_callback=lambda c, t: safe_progress_callback(
-                        c, t, *progressArgs("📥 Downloading Progress", progress_message, start_time)
+                        c, t, *progressArgs("📥 FastTelethon Download", progress_message, start_time)
                     )
                 )
                 

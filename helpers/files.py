@@ -17,6 +17,10 @@ def get_download_path(folder_id: int, filename: str, root_dir: str = "downloads"
 
 def cleanup_download(path: str) -> None:
     try:
+        if not path or path is None:
+            LOGGER(__name__).debug("Cleanup skipped: path is None or empty")
+            return
+        
         LOGGER(__name__).info(f"Cleaning Download: {path}")
         
         if os.path.exists(path):
